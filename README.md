@@ -4,13 +4,22 @@
 
 <!-- ==START TEMPLATE README== -->
 
-<!-- <p align="center">
-    <img style="width: 80%;" src="assets/social-card.png" alt="template logo" />
-</p> -->
+<p align="center">
+    <img style="width: 80%;" src="assets/social-card.png" alt="go project template" />
+</p>
 
 ## Description
 
-This repository is a starter template for Golang projects using the latest version of Go. Use it to create CLI applications, web apps, and more.
+This repository is a starter template for Golang projects using the latest version of Go. 
+Use it to create command-line applications, web apps, and more.
+
+It includes:
+
+- configuration and workflow for goreleaser, a tool for building and publishing Go binaries.
+- configuration for `golangci-lint`, a tool for Go that runs many linters in parallel.
+
+Also included is a configuration and workflow for Dependabot, a tool for keeping dependencies up to date. 
+Dependencies are updated automatically and pull requests are created to merge the changes; minor and patch version updates are automatically merged.
 
 ## Template Setup
 
