@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -32,7 +32,7 @@ func GetGithubUserName(username string) (string, error) {
 		return "", errors.New(resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -44,7 +44,7 @@ func GetGithubUserName(username string) (string, error) {
 	}
 
 	if user.Name == "" {
-		return "", errors.New("No name found")
+		return "", errors.New("no name found")
 	}
 
 	return user.Name, nil
@@ -64,7 +64,7 @@ func GetGithubVendorUsername() (string, error) {
 	matches := re.FindStringSubmatch(url)
 
 	if len(matches) < 2 {
-		return "", errors.New("Could not find github username")
+		return "", errors.New("could not find github username")
 	}
 
 	return matches[1], nil
@@ -197,12 +197,9 @@ func main() {
 	vendorUsername, _ := GetGithubVendorUsername()
 	varMap["project.vendor.github"] = promptUserForInput("User/org vendor github name: ", vendorUsername)
 
-	vendorName, err := GetGithubUserName(varMap["project.vendor.github"])
-	if err != nil {
-		vendorName = ""
-	}
-
+	vendorName, _ := GetGithubUserName(varMap["project.vendor.github"])
 	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", vendorName)
+
 	varMap["date.year"] = time.Now().Local().Format("2020")
 
 	processDirectoryFiles(projectDir, varMap)
