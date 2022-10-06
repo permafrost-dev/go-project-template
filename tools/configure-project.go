@@ -2,14 +2,73 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
+
+type GithubUser struct {
+	Name string `json:"name"`
+}
+
+func GetGithubUserName(username string) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/users/%s", username)
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New(resp.Status)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var user GithubUser
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return "", err
+	}
+
+	if user.Name == "" {
+		return "", errors.New("No name found")
+	}
+
+	return user.Name, nil
+}
+
+func GetGithubVendorUsername() (string, error) {
+	output, err := exec.Command("git", "remote", "get-url", "origin").Output()
+
+	if err != nil {
+		return "", err
+	}
+
+	url := strings.Trim(string(output), " \t\r\n")
+
+	re := regexp.MustCompile(`(?i)(?:github\.com[:/])([\w-]+/[\w-]+)`)
+
+	matches := re.FindStringSubmatch(url)
+
+	if len(matches) < 2 {
+		return "", errors.New("Could not find github username")
+	}
+
+	return matches[1], nil
+}
 
 func promptUserForInput(prompt string, defaultValue string) string {
 	scanner := bufio.NewScanner(os.Stdin)
@@ -93,9 +152,8 @@ func processDirectoryFiles(dir string, varMap map[string]string) {
 		}
 
 		if string(bytes) != content {
-			//os.WriteFile(filePath, []byte(content), 0644)
-			fmt.Println("Update file: " + filePath)
-			fmt.Println(content + "\n\n====================\n\n")
+			fmt.Printf("Updating file: %s\n", filePath)
+			os.WriteFile(filePath, []byte(content), 0644)
 		}
 	}
 }
@@ -126,8 +184,8 @@ func main() {
 		githubEmailBytes = []byte("")
 	}
 
-	githubName := string(githubNameBytes)
-	githubEmail := string(githubEmailBytes)
+	githubName := strings.Trim(string(githubNameBytes), " \r\n\t")
+	githubEmail := strings.Trim(string(githubEmailBytes), " \r\n\t")
 
 	varMap["project.name.full"] = promptUserForInput("Project name: ", path.Base(projectDir))
 	varMap["project.name"] = strings.ReplaceAll(varMap["project.name.full"], " ", "-")
@@ -135,8 +193,16 @@ func main() {
 	varMap["project.author.name"] = promptUserForInput("Your full name: ", githubName)
 	varMap["project.author.email"] = promptUserForInput("Your email address: ", githubEmail)
 	varMap["project.author.github"] = promptUserForInput("Your github username: ", "")
-	varMap["project.vendor.github"] = promptUserForInput("User/org vendor github name: ", "")
-	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", "")
+
+	vendorUsername, _ := GetGithubVendorUsername()
+	varMap["project.vendor.github"] = promptUserForInput("User/org vendor github name: ", vendorUsername)
+
+	vendorName, err := GetGithubUserName(varMap["project.vendor.github"])
+	if err != nil {
+		vendorName = ""
+	}
+
+	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", vendorName)
 	varMap["date.year"] = time.Now().Local().Format("2020")
 
 	processDirectoryFiles(projectDir, varMap)
