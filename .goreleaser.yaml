@@ -1,6 +1,3 @@
-env:
-  - GOPROXY="https://proxy.golang.org,direct"
-
 universal_binaries:
   - replace: false
 
@@ -44,5 +41,5 @@ brews:
     license: "MIT"
     tap:
       owner: '{{project.vendor.github}}'
-      name: homebrew-{{app.name}}
+      name: homebrew-{{project.name}}
       branch: main
