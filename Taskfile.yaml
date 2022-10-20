@@ -4,7 +4,8 @@ version: '3'
 vars:
   GIT_COMMIT:
     sh: git log -n 1 --format=%h
-  VERSION: 1.0.0-dev
+  VERSION:
+    sh: go run tools/build-version.go
 
 tasks:
 
@@ -18,22 +19,37 @@ tasks:
     cmds:
       - task: build-{{project.name}}
 
+  clean:
+    desc: Cleans up build artifacts
+    cmds:
+      - rm -f ./dist/{{project.name}}
+    status:
+      - test -f ./dist/{{project.name}}
+
   lint:
     cmds:
       - task: lint-{{project.name}}
 
+  update-version-file:
+    cmds:
+      - printf "package main\n\nvar Version = \"{{.VERSION}}\"" > ./cmd/{{project.name}}/version.go
+    status:
+      - test -f ./cmd/{{project.name}}/version.go
+      - grep -q "\"{{.VERSION}}\"" ./cmd/{{project.name}}/version.go
+
   lint-{{project.name}}:
     desc: Runs golangci-lint
-    sources:
-      - './cmd/{{project.name}}/**/*.go'
     cmds:
-      - golangci-lint run ./cmd/{{project.name}}
+      - golangci-lint run ./cmd/**
 
   build-{{project.name}}:
     desc: Builds {{project.name}} binary
+    deps:
+      - task: update-version-file
     sources:
       - './cmd/{{project.name}}/**/*.go'
     generates:
       - ./dist/{{project.name}}
     cmds:
+      - mkdir -p ./dist
       - go build -trimpath -ldflags="-s -w -X main.Version={{.VERSION}}-{{.GIT_COMMIT}}" -o dist ./cmd/{{project.name}}
