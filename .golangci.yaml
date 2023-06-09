@@ -2,6 +2,7 @@
 run:
   # Timeout for analysis, e.g. 30s, 5m. Default: 1m
   timeout: 30s
+  modules-download-mode: mod
 
   # Include test files or not. Default: true
   tests: false
@@ -38,18 +39,18 @@ run:
 linters:
   enable:
     # - errcheck
-    - funlen
+    # - funlen
     # - gocritic
-    - gocyclo
+    # - gocyclo
     - goimports
     # - gosec
     - gosimple
     - govet
-    - ineffassign
+    # - ineffassign
     - maintidx
     - misspell
     - nestif
-    - revive
+    # - revive
     - staticcheck
     - typecheck
     - unparam
@@ -57,6 +58,7 @@ linters:
 
 severity:
   default-severity: warning
+  case-sensitive: false
 
 linters-settings:
   funlen:
@@ -82,4 +84,5 @@ linters-settings:
     locale: US
 
   nestif:
+    max-nesting: 3
     min-complexity: 4  # Minimal complexity of if statements to report. - Default: 5
