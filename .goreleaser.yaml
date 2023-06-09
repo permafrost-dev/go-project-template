@@ -1,34 +1,37 @@
+env:
+  - GO111MODULE=on
+  - CGO_ENABLED=0
+
+before:
+  hooks:
+    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d
+    - go mod tidy
+
 universal_binaries:
   - replace: false
 
 archives:
   - id: default
     wrap_in_directory: true
-
-before:
-  hooks:
-    - make {{project.name}}
+  - format_overrides:
+      - goos: windows
+        format: zip
 
 builds:
   - main: ./cmd/{{project.name}}
     binary: '{{project.name}}'
+    flags:
+      - -trimpath
 
-    # Custom flags templates.
     # Default is `-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser`.
     ldflags:
       - -s -w -X main.build={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 
-    # GOOS list to build for.
-    # For more info refer to: https://golang.org/doc/install/source#environment
-    # Defaults are darwin and linux.
     goos:
       - darwin
       - linux
       - windows
 
-    # GOARCH to build for.
-    # For more info refer to: https://golang.org/doc/install/source#environment
-    # Defaults are 386, amd64 and arm64.
     goarch:
       - amd64
       - arm64
@@ -43,3 +46,10 @@ brews:
       owner: '{{project.vendor.github}}'
       name: homebrew-{{project.name}}
       branch: main
+
+signs:
+  - artifacts: checksum
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256

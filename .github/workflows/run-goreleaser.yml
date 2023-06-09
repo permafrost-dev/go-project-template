@@ -14,11 +14,14 @@ permissions:
 jobs:
   artifact-build:
     runs-on: ${{ matrix.os }}
+
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
+
     steps:
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -26,17 +29,12 @@ jobs:
       - run: git fetch --force --tags
       - uses: WillAbides/setup-go-faster@v1.8.0 #actions/setup-go@v3
         with:
-          go-version: '>=1.19.1'
-          #cache: true
-      # More assembly might be required: Docker logins, GPG, etc. It all depends
-      # on your needs.
+          go-version: '>=1.20'
+
       - uses: goreleaser/goreleaser-action@v4
         with:
-          # either 'goreleaser' (default) or 'goreleaser-pro'
           distribution: goreleaser
           version: latest
           args: release --rm-dist --skip-docker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Your GoReleaser Pro key, if you are using the 'goreleaser-pro' distribution
-          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }}
