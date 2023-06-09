@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -52,6 +53,21 @@ type GithubOrganization struct {
 	Type                    string      `json:"type"`
 }
 
+type GithubOrg struct {
+	Login            string `json:"login"`
+	ID               int    `json:"id"`
+	NodeID           string `json:"node_id"`
+	URL              string `json:"url"`
+	ReposURL         string `json:"repos_url"`
+	EventsURL        string `json:"events_url"`
+	HooksURL         string `json:"hooks_url"`
+	IssuesURL        string `json:"issues_url"`
+	MembersURL       string `json:"members_url"`
+	PublicMembersURL string `json:"public_members_url"`
+	AvatarURL        string `json:"avatar_url"`
+	Description      string `json:"description"`
+}
+
 func GetGithubOrganizationName(orgName string) (string, error) {
 	url := fmt.Sprintf("https://api.github.com/orgs/%s", orgName)
 	resp, err := http.Get(url)
@@ -82,6 +98,20 @@ func GetGithubOrganizationName(orgName string) (string, error) {
 	return org.Name, nil
 }
 
+func GetGithubUsernameFromGithubCli() (string, error) {
+	cmd := exec.Command("gh", "api", "user", "--jq", ".login")
+
+	var out strings.Builder
+	cmd.Stdout = &out
+
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(out.String()), nil
+}
+
 func getGithubUsernameFromGitRemote() (string, error) {
 	out, err := gitCommand("config remote.origin.url")
 	if err != nil {
@@ -92,38 +122,60 @@ func getGithubUsernameFromGitRemote() (string, error) {
 	return remoteUrlParts[1], nil
 }
 
+func getGitLogLines() ([]string, error) {
+	//"--author='@users.noreply.github.com'",
+	cmd := exec.Command("git", "log", "--pretty='%an:%ae'", "--reverse")
+
+	var out strings.Builder
+	cmd.Stdout = &out
+
+	err := cmd.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(out.String(), "\n")
+
+	return lines, nil
+}
+
 func searchCommitsForGithubUsername() (string, error) {
 	out, err := gitCommand(`config user.name`)
-	if err != nil {
+
+	if out == "" {
 		return "", err
 	}
+
 	authorName := strings.ToLower(strings.TrimSpace(out))
 
-	out, err = gitCommand(`log --author='@users.noreply.github.com' --pretty='%an:%ae' --reverse`)
-	if err != nil {
-		return "", err
-	}
+	lines, _ := getGitLogLines()
 
-	committers := strings.Split(out, "\n")
 	type committer struct {
 		name, email string
+		username    string
 	}
 
-	committerList := []committer{}
-	for _, line := range committers {
+	committers := make([]committer, 0)
+
+	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		parts := strings.Split(line, ":")
 		if len(parts) < 2 {
 			continue
 		}
+		username := strings.Split(parts[1], "@")[0]
+		committers = append(committers, committer{parts[0], parts[1], username})
+	}
 
-		name, email := parts[0], parts[1]
-		if strings.Contains(name, "[bot]") {
+	committerList := make([]committer, 0)
+
+	for _, committer := range committers {
+		if strings.Contains(committer.name, "[bot]") {
 			continue
 		}
 
-		if strings.ToLower(name) == authorName {
-			committerList = append(committerList, committer{name, email})
+		if strings.EqualFold(committer.name, authorName) {
+			committerList = append(committerList, committer)
 		}
 	}
 
@@ -131,17 +183,11 @@ func searchCommitsForGithubUsername() (string, error) {
 		return "", nil
 	}
 
-	for _, committer := range committerList {
-		fmt.Printf("committer: %s\n", committer)
-	}
-
-	return strings.Split(committerList[0].email, "@")[0], nil
+	return committerList[0].username, nil
 }
 
 func guessGithubUsername() (string, error) {
 	result, err := searchCommitsForGithubUsername()
-
-	fmt.Println(result)
 
 	if err != nil {
 		return "", err
@@ -151,9 +197,14 @@ func guessGithubUsername() (string, error) {
 		return result, nil
 	}
 
+	result, _ = GetGithubUsernameFromGithubCli()
+
+	if result != "" {
+		return result, nil
+	}
+
 	result, err = getGithubUsernameFromGitRemote()
 
-	fmt.Println(result)
 	if err != nil {
 		return "", err
 	}
@@ -163,8 +214,8 @@ func guessGithubUsername() (string, error) {
 
 func gitCommand(args string) (string, error) {
 	cmd := exec.Command("git", strings.Split(args, " ")...)
-	out, err := cmd.Output()
-	return string(out), err
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
 }
 
 func GetGithubUserName(username string) (string, error) {
@@ -197,7 +248,39 @@ func GetGithubUserName(username string) (string, error) {
 	return user.Name, nil
 }
 
-func GetGithubVendorUsername() (string, error) {
+func getGithubUserFirstOrg(username string) (GithubOrg, error) {
+	resp, err := http.Get(fmt.Sprintf("https://api.github.com/users/%s/orgs", username))
+
+	if err != nil {
+		return GithubOrg{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return GithubOrg{}, err
+	}
+
+	var orgs []GithubOrg
+	err = json.Unmarshal(body, &orgs)
+	if err != nil {
+		return GithubOrg{}, err
+	}
+
+	if len(orgs) > 0 {
+		return orgs[0], nil
+	}
+
+	return GithubOrg{}, fmt.Errorf("no organizations found")
+}
+
+func GetGithubVendorUsername(username string) (string, error) {
+	org, _ := getGithubUserFirstOrg(username)
+
+	if org != (GithubOrg{}) {
+		return org.Login, nil
+	}
+
 	output, err := exec.Command("git", "remote", "get-url", "origin").Output()
 
 	if err != nil {
@@ -351,23 +434,23 @@ func main() {
 	varMap["project.author.email"] = promptUserForInput("Your email address: ", githubEmail)
 	varMap["project.author.github"] = promptUserForInput("Your github username: ", githubUser)
 
-	vendorUsername, _ := GetGithubVendorUsername()
+	vendorUsername, _ := GetGithubVendorUsername(varMap["project.author.github"])
 	varMap["project.vendor.github"] = promptUserForInput("User/org vendor github name: ", vendorUsername)
 
 	vendorName, _ := GetGithubUserName(varMap["project.vendor.github"])
 	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", vendorName)
 
-	varMap["date.year"] = time.Now().Local().Format("2020")
+	varMap["date.year"] = fmt.Sprintf("%d", time.Now().Local().Year())
 
-	//processDirectoryFiles(projectDir, varMap)
+	processDirectoryFiles(projectDir, varMap)
 
 	for key, value := range varMap {
 		fmt.Printf("varMap[%s]: %s\n", key, value)
 	}
 
-	// targetDir := projectDir + "/cmd/" + varMap["project.name"]
-	// os.MkdirAll(targetDir, 0755)
-	// os.WriteFile(targetDir+"/main.go", []byte("package main\n\n"), 0644)
+	targetDir := projectDir + "/cmd/" + varMap["project.name"]
+	os.MkdirAll(targetDir, 0755)
+	os.WriteFile(targetDir+"/main.go", []byte("package main\n\n"), 0644)
 
 	fmt.Println("Done!")
 }
