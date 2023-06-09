@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-golangci-lint cache clean
-golangci-lint run
+GO_FILES_STAGED=$(git diff --name-only --cached | grep .go | wc -l)
+
+if [ ! -z $GO_FILES_STAGED ]; then
+    golangci-lint run
+fi
