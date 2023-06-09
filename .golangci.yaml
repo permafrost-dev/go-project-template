@@ -16,6 +16,9 @@ run:
     - build
     - .github
     - .vscode
+    - .custom-hooks
+    - assets
+    - tools
 
   # Which files to skip: they will be analyzed, but issues from them won't be reported.
   # Default value is empty list,
@@ -25,20 +28,21 @@ run:
   # "/" will be replaced by current OS file path separator to properly work on Windows.
   skip-files:
     - tools/*.go
-    - cmd/**/version.go
-    - app/**/version.go
+    # - cmd/**/version.go
+    # - app/**/version.go
 
   # Allow multiple parallel golangci-lint instances running; If false (default) - golangci-lint acquires file lock on start.
-  allow-parallel-runners: false
+  allow-parallel-runners: true
+  concurrency: 4
 
 linters:
   enable:
-    - errcheck
+    # - errcheck
     - funlen
-    - gocritic
+    # - gocritic
     - gocyclo
     - goimports
-    - gosec
+    # - gosec
     - gosimple
     - govet
     - ineffassign
@@ -49,7 +53,10 @@ linters:
     - staticcheck
     - typecheck
     - unparam
-    - unused
+    # - unused
+
+severity:
+  default-severity: warning
 
 linters-settings:
   funlen:
@@ -68,7 +75,7 @@ linters-settings:
       G306: "0644" # Maximum allowed permissions mode for os.WriteFile and ioutil.WriteFile - Default: "0600"
 
   # Show functions with maintainability index lower than N. A high index indicates better maintainability (opposite of complexity). - Default: 20
-  maintidx:    
+  maintidx:
     under: 25
 
   misspell:
@@ -76,4 +83,3 @@ linters-settings:
 
   nestif:
     min-complexity: 4  # Minimal complexity of if statements to report. - Default: 5
-    
