@@ -17,6 +17,7 @@ It includes:
 
 - configuration and workflow for goreleaser, a tool for building and publishing Go binaries.
 - configuration for `golangci-lint`, a tool for Go that runs many linters in parallel.
+- configuration for `task`, a tool similar to `make`. To download `task`, see the [task project page](https://github.com/go-task/task/).
 
 Also included is a configuration and workflow for Dependabot, a tool for keeping dependencies up to date. 
 Dependencies are updated automatically and pull requests are created to merge the changes; minor and patch version updates are automatically merged.
@@ -41,6 +42,13 @@ Some of the default values are automatically determined based on your git config
 
 ```bash
 go mod tidy
+```
+
+
+## Building the project
+
+```bash
+task build
 ```
 
 ---
