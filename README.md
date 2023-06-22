@@ -15,7 +15,7 @@ Use it to create command-line applications, web apps, and more.
 
 It includes:
 
-- configuration and workflow for goreleaser, a tool for building and publishing Go binaries.
+- configuration and workflow for `goreleaser`, a tool for building and publishing Go binaries.
 - configuration for `golangci-lint`, a tool for Go that runs many linters in parallel.
 - configuration for `task`, a tool similar to `make`. To download `task`, see the [task project page](https://github.com/go-task/task/).
 
