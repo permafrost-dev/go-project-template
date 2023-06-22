@@ -341,6 +341,30 @@ func stringInArray(str string, arr []string) bool {
 	return false
 }
 
+func removeBetween(str, start, end string) string {
+	for {
+		s := strings.Index(str, start)
+		e := strings.Index(str, end)
+		// If start or end string is not found, return the original string
+		if s == -1 || e == -1 {
+			return str
+		}
+		// Remove text between start and end string
+		str = str[:s] + str[e+len(end):]
+	}
+}
+
+func processReadmeFile() {
+	content, err := os.ReadFile("README.md")
+	if err != nil {
+		return
+	}
+
+	str := removeBetween(string(content), "<!-- ==START TEMPLATE README== -->", "<!-- ==END TEMPLATE README== -->")
+
+	os.WriteFile("README.md", []byte(str), 0644)
+}
+
 func processDirectoryFiles(dir string, varMap map[string]string) {
 	// get the files in the directory
 	files, err := os.ReadDir(dir)
@@ -354,6 +378,8 @@ func processDirectoryFiles(dir string, varMap map[string]string) {
 		".gitattributes",
 		".gitignore",
 		"configure-project.go",
+		"build-all.go",
+		"build-version.go",
 		"go.sum",
 	}
 
@@ -443,10 +469,11 @@ func main() {
 	varMap["date.year"] = fmt.Sprintf("%d", time.Now().Local().Year())
 
 	processDirectoryFiles(projectDir, varMap)
+	processReadmeFile()
 
-	for key, value := range varMap {
-		fmt.Printf("varMap[%s]: %s\n", key, value)
-	}
+	// for key, value := range varMap {
+	// 	fmt.Printf("varMap[%s]: %s\n", key, value)
+	// }
 
 	targetDir := projectDir + "/cmd/" + varMap["project.name"]
 	os.MkdirAll(targetDir, 0755)
