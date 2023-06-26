@@ -365,6 +365,23 @@ func processReadmeFile() {
 	os.WriteFile("README.md", []byte(str), 0644)
 }
 
+func installGitHooks() {
+	bytes, err := os.ReadFile(".git/config")
+	if err != nil {
+		return
+	}
+
+	content := string(bytes)
+
+	if strings.Contains(string(content), "hooksPath") {
+		return
+	}
+
+	content = strings.Replace(content, "[core]", "[core]\n\thooksPath = .custom-hooks", 1)
+
+	os.WriteFile(".git/config", []byte(content), 0644)
+}
+
 func processDirectoryFiles(dir string, varMap map[string]string) {
 	// get the files in the directory
 	files, err := os.ReadDir(dir)
@@ -478,6 +495,9 @@ func main() {
 	targetDir := projectDir + "/cmd/" + varMap["project.name"]
 	os.MkdirAll(targetDir, 0755)
 	os.WriteFile(targetDir+"/main.go", []byte("package main\n\n"), 0644)
+
+	fmt.Println("Installing git hooks...")
+	installGitHooks()
 
 	fmt.Println("Done!")
 }
