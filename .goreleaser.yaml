@@ -41,9 +41,6 @@ brews:
       name: homebrew-{{project.name}}
       branch: main
 
-signs:
-  - artifacts: checksum
-
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256
