@@ -4,12 +4,10 @@ on:
   push:
     # run only against tags
     tags:
-      - '*'
+      - 'v*'
 
 permissions:
   contents: write
-  # packages: write
-  # issues: write
 
 jobs:
   artifact-build:
@@ -22,19 +20,25 @@ jobs:
 
     steps:
 
+      - name: Install Task
+        uses: arduino/setup-task@v1
+
+      - name: Install Go
+        uses: WillAbides/setup-go-faster@v1.8.0 #actions/setup-go@v3
+        with:
+          go-version: '>=1.20'
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+
       - run: git fetch --force --tags
-      - uses: WillAbides/setup-go-faster@v1.8.0 #actions/setup-go@v3
-        with:
-          go-version: '>=1.20'
 
       - uses: goreleaser/goreleaser-action@v4
         with:
           distribution: goreleaser
           version: latest
-          args: release --rm-dist --skip-docker
+          args: release --clean --skip-docker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

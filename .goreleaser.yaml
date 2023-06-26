@@ -4,15 +4,13 @@ env:
 
 before:
   hooks:
-    - sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d
     - go mod tidy
+    - task update-version-file
 
 universal_binaries:
   - replace: false
 
 archives:
-  - id: default
-    wrap_in_directory: true
   - format_overrides:
       - goos: windows
         format: zip
@@ -22,16 +20,12 @@ builds:
     binary: '{{project.name}}'
     flags:
       - -trimpath
-
-    # Default is `-s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}} -X main.builtBy=goreleaser`.
     ldflags:
       - -s -w -X main.build={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-
     goos:
       - darwin
       - linux
       - windows
-
     goarch:
       - amd64
       - arm64
