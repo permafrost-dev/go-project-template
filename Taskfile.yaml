@@ -6,6 +6,11 @@ vars:
     sh: git log -n 1 --format=%h
   VERSION:
     sh: go run tools/build-version.go
+  GO_SRC_DIRS:
+    sh: find . -name "*.go" -printf '%h\n' | sort -u | egrep -v '^.$' | grep -v './tools' | sd '\n' ' ' | awk -F'|' '{ print $1 }'
+  DOTENV_FILES:
+    sh: find . -name ".env*" -print | sort -u | grep -v './dist' | sd '\n' ' ' | awk -F'|' '{ print $1 }'
+
 
 tasks:
 
@@ -28,6 +33,7 @@ tasks:
 
   lint:
     cmds:
+      - task: lint-dotenv
       - task: lint-{{project.name}}
 
   update-version-file:
@@ -37,10 +43,23 @@ tasks:
       - test -f ./cmd/{{project.name}}/version.go
       - grep -q "\"{{.VERSION}}\"" ./cmd/{{project.name}}/version.go
 
+  lint-dotenv:
+    desc: Lints all dotenv files
+    internal: true
+    preconditions:
+      - test -n "$(find -name '.env*')"
+      - which dotenv-linter
+    cmds:
+      - dotenv-linter {{.DOTENV_FILES}}
+
   lint-{{project.name}}:
     desc: Runs golangci-lint
+    internal: true
+    preconditions:
+      - test -f ./.golangci.yml
+      - which golangci-lint
     cmds:
-      - golangci-lint run ./cmd/**
+      - golangci-lint run {{.GO_SRC_DIRS}}
 
   build-{{project.name}}:
     desc: Builds {{project.name}} binary
@@ -53,3 +72,15 @@ tasks:
     cmds:
       - mkdir -p ./dist
       - go build -trimpath -ldflags="-s -w -X main.Version={{.VERSION}}-{{.GIT_COMMIT}}" -o dist ./cmd/{{project.name}}
+
+  release:
+    desc: Creates a new snapshot release
+    deps:
+      - task: mod
+      - task: lint
+      - task: update-version-file
+    preconditions:
+      - test -f ./.goreleaser.yaml
+      - which goreleaser
+    cmds:
+      - goreleaser build -f ./.goreleaser.yaml --clean --snapshot
