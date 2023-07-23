@@ -7,8 +7,7 @@ before:
     - go mod tidy
     - task update-version-file
 
-universal_binaries:
-  - replace: false
+dist: build
 
 archives:
   - format_overrides:
@@ -18,17 +17,15 @@ archives:
 builds:
   - main: ./cmd/{{project.name}}
     binary: '{{project.name}}'
+    mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
       - -trimpath
     ldflags:
       - -s -w -X main.build={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
-    goos:
-      - darwin
-      - linux
-      - windows
-    goarch:
-      - amd64
-      - arm64
+    targets:
+      - linux_amd64
+      - darwin_arm64
+      - darwin_amd64
 
 brews:
   -
