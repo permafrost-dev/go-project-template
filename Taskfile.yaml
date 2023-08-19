@@ -2,15 +2,8 @@
 version: '3'
 
 vars:
-  GIT_COMMIT:
-    sh: git log -n 1 --format=%h
   VERSION:
     sh: go run tools/build-version.go
-  GO_SRC_DIRS:
-    sh: find . -name "*.go" -printf '%h\n' | sort -u | egrep -v '^.$' | grep -v './tools' | sd '\n' ' ' | awk -F'|' '{ print $1 }'
-  DOTENV_FILES:
-    sh: find . -name ".env*" -print | sort -u | grep -v './dist' | sd '\n' ' ' | awk -F'|' '{ print $1 }'
-
 
 tasks:
 
@@ -21,15 +14,18 @@ tasks:
       - go mod tidy
 
   build:
+    deps:
+      - task: update-version-file
     cmds:
       - task: build-{{project.name}}
 
   clean:
     desc: Cleans up build artifacts
+    preconditions:
+      - test -d ./dist
+      - test -f ./dist/{{project.name}}
     cmds:
       - rm -f ./dist/{{project.name}}
-    status:
-      - test -f ./dist/{{project.name}}
 
   lint:
     cmds:
@@ -37,24 +33,26 @@ tasks:
       - task: lint-{{project.name}}
 
   update-version-file:
+    internal: true
     cmds:
       - printf "package main\n\nvar Version = \"{{.VERSION}}\"" > ./cmd/{{project.name}}/version.go
-    status:
-      - test -f ./cmd/{{project.name}}/version.go
-      - grep -q "\"{{.VERSION}}\"" ./cmd/{{project.name}}/version.go
 
   lint-dotenv:
-    desc: Lints all dotenv files
     internal: true
+    vars:
+      DOTENV_FILES:
+        sh: find . -name ".env*" -print | sort -u | egrep -v '^./dist.*$' | tr '\n' ' '
     preconditions:
-      - test -n "$(find -name '.env*')"
       - which dotenv-linter
+      - test -n "$(find -name '.env*')"
     cmds:
       - dotenv-linter {{.DOTENV_FILES}}
 
   lint-{{project.name}}:
-    desc: Runs golangci-lint
     internal: true
+    vars:
+      GO_SRC_DIRS:
+        sh:  find . -name "*.go" -printf '%h\n' | awk -F/ '{ print "./" $2 }' | sort -u | grep -v './tools' | tr '\n' ' '
     preconditions:
       - test -f ./.golangci.yml
       - which golangci-lint
@@ -63,8 +61,9 @@ tasks:
 
   build-{{project.name}}:
     desc: Builds {{project.name}} binary
-    deps:
-      - task: update-version-file
+    vars:
+      GIT_COMMIT:
+        sh: git log -n 1 --format=%h
     sources:
       - './cmd/{{project.name}}/**/*.go'
     generates:
