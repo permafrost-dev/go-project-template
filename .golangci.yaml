@@ -13,12 +13,12 @@ run:
   # but default dirs are skipped independently of this option's value (see skip-dirs-use-default).
   # "/" will be replaced by current OS file path separator to properly work on Windows.
   skip-dirs:
-    - dist
-    - build
+    - .custom-hooks
     - .github
     - .vscode
-    - .custom-hooks
     - assets
+    - build
+    - dist
     - tools
 
   # Which files to skip: they will be analyzed, but issues from them won't be reported.
@@ -29,32 +29,22 @@ run:
   # "/" will be replaced by current OS file path separator to properly work on Windows.
   skip-files:
     - tools/*.go
-    # - cmd/**/version.go
-    # - app/**/version.go
 
   # Allow multiple parallel golangci-lint instances running; If false (default) - golangci-lint acquires file lock on start.
   allow-parallel-runners: true
-  concurrency: 4
+  concurrency: 8
 
 linters:
   enable:
-    # - errcheck
-    # - funlen
-    # - gocritic
-    # - gocyclo
     - goimports
-    # - gosec
     - gosimple
     - govet
-    # - ineffassign
     - maintidx
     - misspell
     - nestif
-    # - revive
     - staticcheck
     - typecheck
     - unparam
-    # - unused
 
 severity:
   default-severity: warning
@@ -68,13 +58,6 @@ linters-settings:
   gocritic:
     disabled-checks:
       - exitAfterDefer
-
-  gosec:
-    severity: medium
-    config:
-      G301: "0755" # Maximum allowed permissions mode for os.Mkdir and os.MkdirAll - Default: "0750"
-      G302: "0644" # Maximum allowed permissions mode for os.OpenFile and os.Chmod - Default: "0600"
-      G306: "0644" # Maximum allowed permissions mode for os.WriteFile and ioutil.WriteFile - Default: "0600"
 
   # Show functions with maintainability index lower than N. A high index indicates better maintainability (opposite of complexity). - Default: 20
   maintidx:
