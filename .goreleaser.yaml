@@ -41,3 +41,13 @@ brews:
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"

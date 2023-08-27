@@ -83,3 +83,19 @@ tasks:
       - which goreleaser
     cmds:
       - goreleaser build -f ./.goreleaser.yaml --clean --snapshot
+
+  download-utils:
+    desc: Downloads watchexec, eget
+    preconditions:
+      - which eget
+    cmds:
+      - curl -o ./eget https://api.github.com/zyedidia/eget/releases/latest/download/eget-$(uname -s)-$(uname -m)
+      - eget watchexec/watchexec -d --to=./we --asset='gnu.tar.' --asset='^.sha' --asset='^.b3'
+
+  autobuild:
+    interactive: true
+    desc: Watches for changes, automatically rebuilds the project & displays a minimal system notification
+    preconditions:
+      - which watchexec
+    cmds:
+      - watchexec --exts go --fs-events create,modify,remove -N --debounce 200 -w ./appsync/** -w ./cmd -w ./internal -- task build -f
