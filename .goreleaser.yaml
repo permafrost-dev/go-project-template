@@ -15,7 +15,7 @@ archives:
         format: zip
 
 builds:
-  - main: ./cmd/{{project.name}}
+  - main: './main.go'
     binary: '{{project.name}}'
     mod_timestamp: '{{ .CommitTimestamp }}'
     flags:
