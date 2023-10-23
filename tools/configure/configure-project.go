@@ -494,27 +494,78 @@ func setupCobra() {
 			return
 		}
 
+		fmt.Printf("Installing Cobra CLI...\n")
+
 		cmd := exec.Command("go", "install", "github.com/spf13/cobra-cli@latest")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("Error while installing cobra: %v\n", err)
+		} else {
+			fmt.Printf("Done.\n")
 		}
 	}
 
 	initializeCobraPackage := func() {
+		fmt.Printf("Initializing Cobra package...\n")
+
 		cmd := exec.Command("cobra-cli", "init")
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
 		if err := cmd.Run(); err != nil {
 			fmt.Printf("Error while initializing cobra: %v\n", err)
+		} else {
+			fmt.Printf("Done.\n")
 		}
 	}
 
 	installCobraCLI()
 	initializeCobraPackage()
+}
+
+func getCurrentGoVersion() string {
+	defaultVersion := "1.20"
+
+	out, err := exec.Command("go", "version").Output()
+
+	if err != nil {
+		return defaultVersion
+	}
+
+	re := regexp.MustCompile(`go(\d+\.\d+)`)
+	matches := re.FindStringSubmatch(string(out))
+
+	if len(matches) > 1 {
+		return matches[1]
+	}
+
+	return defaultVersion
+}
+
+func patternReplace(input string, pattern string, replacement string) string {
+	return regexp.MustCompile(pattern).ReplaceAllString(input, replacement)
+}
+
+func updateGoModFile(projectDir string) {
+	data, err := os.ReadFile(projectDir + "/go.mod")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	content := string(data)
+	content = patternReplace(content, `^module github.com/.+$`, "module github.com/{{project.vendor.github}}/{{project.name}}")
+	content = patternReplace(content, `^(go \d+\.\d+)$`, "go "+getCurrentGoVersion())
+
+	os.WriteFile(projectDir+"/go.mod", []byte(content), 0644)
+}
+
+func generateAppVersionFile(projectDir string) {
+	appDir := projectDir + "/app"
+	os.MkdirAll(appDir, 0755)
+	os.WriteFile(appDir+"/version.go", []byte(`package main\n\nvar Version = "0.0.0"\n`), 0644)
 }
 
 func main() {
@@ -563,20 +614,20 @@ func main() {
 	varMap["date.year"] = fmt.Sprintf("%d", time.Now().Local().Year())
 	varMap["packages.cobra"] = promptUserForInput("Use Cobra? (y/n): ", "y")
 
+	updateGoModFile(projectDir) // must be called before processing files
+
 	processDirectoryFiles(projectDir, varMap)
 	processReadmeFile()
-
-	if IsYes(varMap["packages.cobra"]) {
-		setupCobra()
-	}
-
-	appDir := projectDir + "/app"
-	os.MkdirAll(appDir, 0755)
-	os.WriteFile(appDir+"/version.go", []byte("package main\n\nvar Version = \"0.0.0\"\n"), 0644)
 
 	callFuncWithStatus("Installing git hooks", true, installGitHooks)
 	callFuncWithStatus("Removing assets directory", true, removeAssetsDir)
 	callFuncWithStatus("Removing configure script", true, removeConfigureScript)
+
+	generateAppVersionFile(projectDir)
+
+	if IsYes(varMap["packages.cobra"]) {
+		setupCobra()
+	}
 
 	fmt.Println("Done!")
 }

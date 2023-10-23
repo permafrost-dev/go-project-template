@@ -1,4 +1,4 @@
-module github.com/project-vendor-github/project-name
+module github.com/vendor-name/project-name
 
 go 1.19
 
