@@ -1,9 +1,7 @@
 # This file can be run with the `task` utility: https://taskfile.dev/
 version: '3'
 
-vars:
-  VERSION:
-    sh: go run tools/build-version.go
+
 
 tasks:
 
@@ -33,9 +31,11 @@ tasks:
       - task: lint-{{project.name}}
 
   update-version-file:
-    internal: true
+    vars:
+      VERSION:
+        sh: go run tools/build-version.go
     cmds:
-      - printf "package main\n\nvar Version = \"{{.VERSION}}\"" > ./cmd/{{project.name}}/version.go
+      - printf "package main\n\nvar Version = \"{{.VERSION}}\"" > ./app/version.go
 
   lint-dotenv:
     internal: true
@@ -65,12 +65,15 @@ tasks:
       GIT_COMMIT:
         sh: git log -n 1 --format=%h
     sources:
-      - './cmd/{{project.name}}/**/*.go'
+      - './app/**/*.go'
+      - './cmd/**/*.go'
+      - './internal/**/*.go'
+      - './main.go'
     generates:
       - ./dist/{{project.name}}
     cmds:
       - mkdir -p ./dist
-      - go build -trimpath -ldflags="-s -w -X main.Version={{.VERSION}}-{{.GIT_COMMIT}}" -o dist ./cmd/{{project.name}}
+      - go build -trimpath -ldflags="-s -w -X main.Version={{.VERSION}}-{{.GIT_COMMIT}}" -o dist/{{project.name}} .
 
   release:
     desc: Creates a new snapshot release
@@ -84,18 +87,10 @@ tasks:
     cmds:
       - goreleaser build -f ./.goreleaser.yaml --clean --snapshot
 
-  download-utils:
-    desc: Downloads watchexec, eget
-    preconditions:
-      - which eget
-    cmds:
-      - curl -o ./eget https://api.github.com/zyedidia/eget/releases/latest/download/eget-$(uname -s)-$(uname -m)
-      - eget watchexec/watchexec -d --to=./we --asset='gnu.tar.' --asset='^.sha' --asset='^.b3'
-
   autobuild:
     interactive: true
     desc: Watches for changes, automatically rebuilds the project & displays a minimal system notification
     preconditions:
       - which watchexec
     cmds:
-      - watchexec --exts go --fs-events create,modify,remove -N --debounce 200 -w ./appsync/** -w ./cmd -w ./internal -- task build -f
+      - watchexec --exts go --fs-events create,modify,remove -N --debounce 500 -w ./app -w ./cmd -w ./internal -- task build -f
