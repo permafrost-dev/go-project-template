@@ -68,6 +68,24 @@ type GithubOrg struct {
 	Description      string `json:"description"`
 }
 
+func IsYes(input string) bool {
+	lowerInput := strings.ToLower(input)
+	return lowerInput == "yes" || lowerInput == "ye" || lowerInput == "y"
+}
+
+func callFuncWithStatus(message string, withCheckmark bool, handler func()) {
+	fmt.Printf("%s...", message)
+
+	handler()
+
+	if withCheckmark {
+		fmt.Println(" \u2713")
+		return
+	}
+
+	fmt.Println(" done.")
+}
+
 func GetGithubOrganizationName(orgName string) (string, error) {
 	url := fmt.Sprintf("https://api.github.com/orgs/%s", orgName)
 	resp, err := http.Get(url)
@@ -440,19 +458,63 @@ func processDirectoryFiles(dir string, varMap map[string]string) {
 	}
 }
 
-func removeAssetsDir() {
-	//recursively remove the assets directory
-	files, err := os.ReadDir("assets")
+func removeDirectoryRecursive(dir string) {
+	files, err := os.ReadDir(dir)
 	if err != nil {
-		fmt.Printf("error while removing assets dir: %v\n", err)
+		fmt.Println(err)
 		return
 	}
 
 	for _, file := range files {
-		os.RemoveAll("./assets/" + file.Name())
+		filePath := dir + "/" + file.Name()
+
+		if file.IsDir() {
+			removeDirectoryRecursive(filePath)
+			continue
+		}
+
+		os.Remove(filePath)
 	}
 
-	os.RemoveAll("./assets")
+	os.RemoveAll(dir)
+}
+
+func removeAssetsDir() {
+	removeDirectoryRecursive("./assets")
+}
+
+func removeConfigureScript() {
+	removeDirectoryRecursive("./tools/configure")
+}
+
+func setupCobra() {
+	installCobraCLI := func() {
+		_, err := exec.LookPath("cobra-cli")
+		if err == nil {
+			return
+		}
+
+		cmd := exec.Command("go", "install", "github.com/spf13/cobra-cli@latest")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("Error while installing cobra: %v\n", err)
+		}
+	}
+
+	initializeCobraPackage := func() {
+		cmd := exec.Command("cobra-cli", "init")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("Error while initializing cobra: %v\n", err)
+		}
+	}
+
+	installCobraCLI()
+	initializeCobraPackage()
 }
 
 func main() {
@@ -499,21 +561,22 @@ func main() {
 	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", vendorName)
 
 	varMap["date.year"] = fmt.Sprintf("%d", time.Now().Local().Year())
+	varMap["packages.cobra"] = promptUserForInput("Use Cobra? (y/n): ", "y")
 
 	processDirectoryFiles(projectDir, varMap)
 	processReadmeFile()
 
-	// for key, value := range varMap {
-	// 	fmt.Printf("varMap[%s]: %s\n", key, value)
-	// }
+	if IsYes(varMap["packages.cobra"]) {
+		setupCobra()
+	}
 
-	targetDir := projectDir + "/cmd/" + varMap["project.name"]
-	os.MkdirAll(targetDir, 0755)
-	os.WriteFile(targetDir+"/main.go", []byte("package main\n\n"), 0644)
+	appDir := projectDir + "/app"
+	os.MkdirAll(appDir, 0755)
+	os.WriteFile(appDir+"/version.go", []byte("package main\n\nvar Version = \"0.0.0\"\n"), 0644)
 
-	fmt.Println("Installing git hooks...")
-	installGitHooks()
-	removeAssetsDir()
+	callFuncWithStatus("Installing git hooks", true, installGitHooks)
+	callFuncWithStatus("Removing assets directory", true, removeAssetsDir)
+	callFuncWithStatus("Removing configure script", true, removeConfigureScript)
 
 	fmt.Println("Done!")
 }
