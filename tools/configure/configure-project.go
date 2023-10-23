@@ -440,6 +440,21 @@ func processDirectoryFiles(dir string, varMap map[string]string) {
 	}
 }
 
+func removeAssetsDir() {
+	//recursively remove the assets directory
+	files, err := os.ReadDir("assets")
+	if err != nil {
+		fmt.Printf("error while removing assets dir: %v\n", err)
+		return
+	}
+
+	for _, file := range files {
+		os.RemoveAll("./assets/" + file.Name())
+	}
+
+	os.RemoveAll("./assets")
+}
+
 func main() {
 	// get the current directory
 	cwd, err := os.Getwd()
@@ -498,6 +513,7 @@ func main() {
 
 	fmt.Println("Installing git hooks...")
 	installGitHooks()
+	removeAssetsDir()
 
 	fmt.Println("Done!")
 }
