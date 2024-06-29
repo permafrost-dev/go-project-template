@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -274,7 +273,7 @@ func getGithubUserFirstOrg(username string) (GithubOrg, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return GithubOrg{}, err
 	}
@@ -548,7 +547,7 @@ func patternReplace(input string, pattern string, replacement string) string {
 	return regexp.MustCompile(pattern).ReplaceAllString(input, replacement)
 }
 
-func updateGoModFile(projectDir string) {
+func updateGoModFile(projectDir string, varMap map[string]string) {
 	data, err := os.ReadFile(projectDir + "/go.mod")
 	if err != nil {
 		fmt.Println(err)
@@ -556,10 +555,27 @@ func updateGoModFile(projectDir string) {
 	}
 
 	content := string(data)
-	content = patternReplace(content, `^module github.com/.+$`, "module github.com/{{project.vendor.github}}/{{project.name}}")
-	content = patternReplace(content, `^(go \d+\.\d+)$`, "go "+getCurrentGoVersion())
+	content = patternReplace(content, `module github.com/vendor-name/project-name`, "module github.com/"+varMap["project.vendor.github"]+"/"+varMap["project.name"])
+	content = patternReplace(content, `go [0-9]+\.[0-9]+`, "go "+getCurrentGoVersion())
 
 	os.WriteFile(projectDir+"/go.mod", []byte(content), 0644)
+}
+
+func getGitUsernameAndEmail() (string, string) {
+	githubNameBytes, err := exec.Command("git", "config", "--global", "user.name").Output()
+	if err != nil {
+		githubNameBytes = []byte("")
+	}
+
+	githubEmailBytes, err := exec.Command("git", "config", "--global", "user.email").Output()
+	if err != nil {
+		githubEmailBytes = []byte("")
+	}
+
+	githubName := strings.Trim(string(githubNameBytes), " \r\n\t")
+	githubEmail := strings.Trim(string(githubEmailBytes), " \r\n\t")
+
+	return githubName, githubEmail
 }
 
 func generateAppVersionFile(projectDir string) {
@@ -584,20 +600,10 @@ func main() {
 
 	varMap := make(map[string]string)
 
-	githubNameBytes, err := exec.Command("git", "config", "--global", "user.name").Output()
-	if err != nil {
-		githubNameBytes = []byte("")
-	}
-
-	githubEmailBytes, err := exec.Command("git", "config", "--global", "user.email").Output()
-	if err != nil {
-		githubEmailBytes = []byte("")
-	}
-
-	githubName := strings.Trim(string(githubNameBytes), " \r\n\t")
-	githubEmail := strings.Trim(string(githubEmailBytes), " \r\n\t")
+	githubName, githubEmail := getGitUsernameAndEmail()
 	githubUser, _ := guessGithubUsername()
 
+	varMap["date.year"] = fmt.Sprintf("%d", time.Now().Local().Year())
 	varMap["project.name.full"] = promptUserForInput("Project name: ", path.Base(projectDir))
 	varMap["project.name"] = strings.ReplaceAll(varMap["project.name.full"], " ", "-")
 	varMap["project.description"] = promptUserForInput("Project description: ", "")
@@ -611,19 +617,16 @@ func main() {
 	vendorName, _ := GetGithubUserName(varMap["project.vendor.github"])
 	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", vendorName)
 
-	varMap["date.year"] = fmt.Sprintf("%d", time.Now().Local().Year())
-	varMap["packages.cobra"] = promptUserForInput("Use Cobra? (y/n): ", "y")
+	varMap["packages.cobra"] = promptUserForInput("Use spf13/cobra? (Y/n): ", "y")
 
-	updateGoModFile(projectDir) // must be called before processing files
-
+	updateGoModFile(projectDir, varMap) // must be called before processing files
 	processDirectoryFiles(projectDir, varMap)
 	processReadmeFile()
+	generateAppVersionFile(projectDir)
 
 	callFuncWithStatus("Installing git hooks", true, installGitHooks)
 	callFuncWithStatus("Removing assets directory", true, removeAssetsDir)
 	callFuncWithStatus("Removing configure script", true, removeConfigureScript)
-
-	generateAppVersionFile(projectDir)
 
 	if IsYes(varMap["packages.cobra"]) {
 		setupCobra()
