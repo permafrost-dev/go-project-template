@@ -34,10 +34,20 @@ jobs:
 
       - run: git fetch --force --tags
 
-      - uses: goreleaser/goreleaser-action@v5
+      # validate the configuration file
+      - uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
-          version: latest
+          version: v2
+          args: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: v2
           args: release --clean --skip-docker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GORELEASER_KEY: ${{ secrets.GORELEASER_KEY }} # goreleaser-pro key

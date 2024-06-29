@@ -1,3 +1,7 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+version: 2
+
 env:
   - GO111MODULE=on
   - CGO_ENABLED=0
@@ -27,16 +31,15 @@ builds:
       - darwin_arm64
       - darwin_amd64
 
-brews:
-  -
-    name: '{{project.name}}'
-    homepage: 'https://github.com/{{project.vendor.github}}/{{project.name}}'
-    description: '{{project.description}}'
-    license: "MIT"
-    tap:
-      owner: '{{project.vendor.github}}'
-      name: homebrew-{{project.name}}
-      branch: main
+# brews:
+    # - name: '{{project.name}}'
+    #   homepage: 'https://github.com/{{project.vendor.github}}/{{project.name}}'
+    #   description: '{{project.description}}'
+    #   license: "MIT"
+    #     repository:
+    #       owner: '{{project.vendor.github}}'
+    #       name: homebrew-{{project.name}}
+    #       branch: main
 
 checksum:
   name_template: "checksums.txt"
