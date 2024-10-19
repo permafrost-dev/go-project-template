@@ -15,6 +15,7 @@ jobs:
     env:
       GO_VERSION: "~1.23"
       GO111MODULE: "on"
+      GORELEASER_DISTRIBUTION: "goreleaser"
 
     strategy:
       fail-fast: false
@@ -38,7 +39,7 @@ jobs:
       # validate the configuration file
       - uses: goreleaser/goreleaser-action@v6
         with:
-          distribution: goreleaser
+          distribution: ${{ env.GORELEASER_DISTRIBUTION }}
           version: latest
           args: check
         env:
@@ -47,7 +48,7 @@ jobs:
 
       - uses: goreleaser/goreleaser-action@v6
         with:
-          distribution: goreleaser
+          distribution: ${{ env.GORELEASER_DISTRIBUTION }}
           version: latest
           args: release --clean
         env:

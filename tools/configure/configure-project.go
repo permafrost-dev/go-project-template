@@ -575,6 +575,20 @@ func updateGithubWorkflowGoVersion(projectDir string, workflowName string) {
 	os.WriteFile(filename, []byte(content), 0644)
 }
 
+func useGoreleaserProInGithubWorkflow(projectDir string) {
+	filename := projectDir + "/.github/workflows/run-goreleaser.yml"
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	content := string(data)
+	content = patternReplace(content, `GORELEASER_DISTRIBUTION: "goreleaser"`, `GORELEASER_DISTRIBUTION: "goreleaser-pro"`)
+
+	os.WriteFile(filename, []byte(content), 0644)
+}
+
 func getGitUsernameAndEmail() (string, string) {
 	githubNameBytes, err := exec.Command("git", "config", "--global", "user.name").Output()
 	if err != nil {
@@ -630,6 +644,7 @@ func main() {
 
 	vendorName, _ := GetGithubUserName(varMap["project.vendor.github"])
 	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", vendorName)
+	varMap["project.goreleaserpro"] = promptUserForInput("Do you have a goreleaser-pro license key? (y/N): ", "n")
 	varMap["packages.cobra"] = promptUserForInput("Use spf13/cobra? (Y/n): ", "y")
 
 	updateGoModFile(projectDir, varMap) // must be called before processing files
@@ -642,6 +657,10 @@ func main() {
 	callFuncWithStatus("Installing git hooks", true, installGitHooks)
 	callFuncWithStatus("Removing assets directory", true, removeAssetsDir)
 	callFuncWithStatus("Removing configure script", true, removeConfigureScript)
+
+	if IsYes(varMap["project.goreleaserpro"]) {
+		useGoreleaserProInGithubWorkflow(projectDir)
+	}
 
 	if IsYes(varMap["packages.cobra"]) {
 		setupCobra()
