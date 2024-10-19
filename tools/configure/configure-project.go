@@ -390,7 +390,7 @@ func installGitHooks() {
 
 	content := string(bytes)
 
-	if strings.Contains(string(content), "hooksPath") {
+	if strings.Contains(content, "hooksPath") {
 		return
 	}
 
@@ -450,7 +450,7 @@ func processDirectoryFiles(dir string, varMap map[string]string) {
 			content = strings.ReplaceAll(content, key, value)
 		}
 
-		if string(bytes) != content {
+		if string(bytes) != content && len(content) > 0 {
 			fmt.Printf("Updating file: %s\n", filePath)
 			os.WriteFile(filePath, []byte(content), 0644)
 		}
@@ -561,6 +561,20 @@ func updateGoModFile(projectDir string, varMap map[string]string) {
 	os.WriteFile(projectDir+"/go.mod", []byte(content), 0644)
 }
 
+func updateGithubWorkflowGoVersion(projectDir string, workflowName string) {
+	filename := projectDir + "/.github/workflows/" + workflowName + ".yml"
+	data, err := os.ReadFile(filename)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	content := string(data)
+	content = patternReplace(content, `GO_VERSION: "~[0-9]+\.[0-9]+"`, `GO_VERSION: "~`+getCurrentGoVersion()+`"`)
+
+	os.WriteFile(filename, []byte(content), 0644)
+}
+
 func getGitUsernameAndEmail() (string, string) {
 	githubNameBytes, err := exec.Command("git", "config", "--global", "user.name").Output()
 	if err != nil {
@@ -581,7 +595,7 @@ func getGitUsernameAndEmail() (string, string) {
 func generateAppVersionFile(projectDir string) {
 	appDir := projectDir + "/app"
 	os.MkdirAll(appDir, 0755)
-	os.WriteFile(appDir+"/version.go", []byte(`package main\n\nvar Version = "0.0.0"\n`), 0644)
+	os.WriteFile(appDir+"/version.go", []byte("package main\n\nvar Version = \"0.0.0\"\n"), 0644)
 }
 
 func main() {
@@ -616,10 +630,11 @@ func main() {
 
 	vendorName, _ := GetGithubUserName(varMap["project.vendor.github"])
 	varMap["project.vendor.name"] = promptUserForInput("User/org vendor name: ", vendorName)
-
 	varMap["packages.cobra"] = promptUserForInput("Use spf13/cobra? (Y/n): ", "y")
 
 	updateGoModFile(projectDir, varMap) // must be called before processing files
+	updateGithubWorkflowGoVersion(projectDir, "run-tests")
+	updateGithubWorkflowGoVersion(projectDir, "run-goreleaser")
 	processDirectoryFiles(projectDir, varMap)
 	processReadmeFile()
 	generateAppVersionFile(projectDir)

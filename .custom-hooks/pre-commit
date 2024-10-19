@@ -16,6 +16,8 @@ if [ ! -z "$GO_FILES_STAGED" ] && [ "$GO_FILES_STAGED" != "0" ]; then
             SRC_PATHS="./**"
         fi
 
+        SRC_PATHS="."
+
         echo "[pre-commit] $GOLINT_BIN run -c ./.golangci.yaml --new-from-rev $LAST_COMMIT $SRC_PATHS"
 
         $GOLINT_BIN run -c ./.golangci.yaml --new-from-rev $LAST_COMMIT $SRC_PATHS
