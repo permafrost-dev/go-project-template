@@ -25,8 +25,10 @@ fi
 
 if [ "$MARKDOWN_STAGED_FILES" != "" ] && [ "$NPX_BIN" != "" ]; then
     runCommand "$NPX_BIN" markdownlint-cli --fix $MARKDOWN_STAGED_FILES
+    git add $MARKDOWN_STAGED_FILES
 fi
 
 if [ "$PRETTIER_STAGED_FILES" != "" ] && [ "$NPX_BIN" != "" ]; then
     runCommand "$NPX_BIN" prettier --write $PRETTIER_STAGED_FILES
+    git add $PRETTIER_STAGED_FILES
 fi
