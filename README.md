@@ -44,11 +44,25 @@ Some of the default values are automatically determined based on your git config
 go mod tidy
 ```
 
-
 ## Building the project
 
 ```bash
 task build
+```
+
+## Building the Docker image
+
+The included Dockerfile is a multi-stage build that produces the smallest possible container image.
+
+To build the Docker image, run:
+
+```bash
+# build and push to GitHub Container Registry (ghcr.io is the default)
+./build-docker.sh --login <username> --password <password> --push --docker
+# build and push to Docker Hub:
+./build-docker.sh --login <username> --password <password> --push --docker --registry docker.io
+# build only, using podman instead of docker:
+./build-docker.sh --podman
 ```
 
 ---

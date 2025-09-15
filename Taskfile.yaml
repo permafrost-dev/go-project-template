@@ -40,9 +40,23 @@ tasks:
       - ./dist/{{project.name}}
     cmds:
       - mkdir -p ./dist
+      - go build -trimpath -ldflags="-s -w -X main.Version={{.VERSION}}-{{.GIT_COMMIT}}" -o dist/{{project.name}} .
+
+  build-release:
+    desc: triggers a new release
+    sources:
+      - "./app/**/*.go"
+      - "./cmd/**/*.go"
+      - "./internal/**/*.go"
+      - "./main.go"
+    vars:
+      NEW_TAG:
+        sh: svu next
+    cmds:
       - task: update-version-file
       - task: add-version-file-to-last-commit
-      - go build -trimpath -ldflags="-s -w -X main.Version={{.VERSION}}-{{.GIT_COMMIT}}" -o dist/{{project.name}} .
+      - git tag -a {{.NEW_TAG}}
+      - task: build
 
   autobuild:
     interactive: true
